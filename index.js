@@ -82,7 +82,7 @@ app.post('/webhook/products-update', async (req, res) => {
       for (const request of requests) {
         try {
           await resend.emails.send({
-            from: 'Izas Outdoor <avisos@izas-outdoor.com>', // Asegúrate de que este es tu correo verificado
+            from: 'Izas Outdoor <noreply@izas-outdoor.com>', // Asegúrate de que este es tu correo verificado
             to: request.email,
             subject: `¡Ya está disponible: ${request.product_title}!`,
             html: `
