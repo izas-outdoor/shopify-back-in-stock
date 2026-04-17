@@ -89,7 +89,7 @@ app.post('/webhook/products-update', async (req, res) => {
               <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e4e4e4; border-radius: 8px; overflow: hidden;">
                 
                 <div style="background-color: #000000; padding: 20px; text-align: center;">
-                  <img src="https://izas-outdoor.com/cdn/shop/files/Logo_Izas_Blanco.png" alt="Izas Outdoor" style="max-height: 40px;">
+                  <img src="https://cdn.shopify.com/s/files/1/0834/1579/3985/files/logo-izas-negro_2.svg?v=1707914877" alt="Izas Outdoor" style="max-height: 40px;">
                 </div>
 
                 <div style="padding: 40px 30px; text-align: center;">
