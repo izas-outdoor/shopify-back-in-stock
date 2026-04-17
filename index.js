@@ -70,7 +70,7 @@ app.post('/webhook/products-update', async (req, res) => {
       for (const request of requests) {
         try {
           await resend.emails.send({
-            from: 'Tu Tienda <avisos@tudominio.com>', // Configura tu dominio en Resend
+            from: 'Tu Tienda <noreply@izas-outdoor.com>', // Configura tu dominio en Resend
             to: request.email,
             subject: `¡Ya está disponible: ${request.product_title}!`,
             html: `
