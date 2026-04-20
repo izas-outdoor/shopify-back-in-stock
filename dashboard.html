@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Izas Outdoor - Back in Stock Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+    <script src="https://unpkg.com/@shopify/app-bridge-utils@3"></script>
+    <script>
+        // Leemos el parámetro 'host' de la URL (que Shopify nos envía automáticamente)
+        const urlParams = new URLSearchParams(window.location.search);
+        const host = urlParams.get('host');
+
+        if (host) {
+            const app = window['app-bridge'].createApp({
+                // PON AQUÍ TU API KEY DE LA APP DE SHOPIFY
+                apiKey: 'TU_API_KEY_AQUI',
+                host: host,
+                forceRedirect: true
+            });
+            // Inicializamos el título de la página dentro del admin de Shopify
+            const TitleBar = window['app-bridge'].actions.TitleBar;
+            const titleBarOptions = { title: 'Panel de Demanda de Stock' };
+            const myTitleBar = TitleBar.create(app, titleBarOptions);
+        } else {
+            console.error('No se encontró el parámetro host. ¿Estás dentro de Shopify?');
+        }
+    </script>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">📦 Panel de Demanda de Stock</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+                <h3 class="text-gray-500 text-sm font-semibold uppercase">Total Solicitudes</h3>
+                <p id="kpi-total" class="text-3xl font-bold text-gray-800 mt-2">Cargando...</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500">
+                <h3 class="text-gray-500 text-sm font-semibold uppercase">Esperando Stock</h3>
+                <p id="kpi-pendientes" class="text-3xl font-bold text-yellow-600 mt-2">Cargando...</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+                <h3 class="text-gray-500 text-sm font-semibold uppercase">Ya Avisados</h3>
+                <p id="kpi-enviados" class="text-3xl font-bold text-green-600 mt-2">Cargando...</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="bg-white rounded-lg shadow p-6 lg:col-span-1">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Top 5 Más Demandados</h2>
+                <canvas id="myChart"></canvas>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6 lg:col-span-2 overflow-x-auto">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Detalle por Variante</h2>
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-gray-100 text-gray-600">
+                        <tr>
+                            <th class="px-4 py-3 rounded-tl-lg">Producto</th>
+                            <th class="px-4 py-3">ID Variante</th>
+                            <th class="px-4 py-3 text-center">Gente Esperando</th>
+                            <th class="px-4 py-3 text-center rounded-tr-lg">Ya Avisados</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cuerpo" class="divide-y divide-gray-100">
+                        <tr><td colspan="4" class="px-4 py-4 text-center">Conectando con el servidor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let myChart = null;
+
+    // ==========================================
+    // LÓGICA DE EXTRACCIÓN (Ahora habla con tu propio servidor)
+    // ==========================================
+    async function cargarDatos() {
+      try {
+        const respuesta = await fetch('/api/analytics');
+        const data = await respuesta.json();
+
+        if (data.error) {
+          alert('Error cargando datos: ' + data.error);
+          return;
+        }
+
+        // KPIs
+        const total = data.length;
+        const pendientes = data.filter(r => !r.notified).length;
+        const enviados = data.filter(r => r.notified).length;
+
+        document.getElementById('kpi-total').innerText = total;
+        document.getElementById('kpi-pendientes').innerText = pendientes;
+        document.getElementById('kpi-enviados').innerText = enviados;
+
+        // Agrupar datos por variante
+        const agrupado = {};
+        data.forEach(req => {
+          const key = req.variant_id;
+          if (!agrupado[key]) {
+            agrupado[key] = {
+              titulo: req.product_title || 'Producto sin nombre',
+              variant_id: req.variant_id,
+              pendientes: 0,
+              enviados: 0
+            };
+          }
+          if (req.notified) agrupado[key].enviados++;
+          else agrupado[key].pendientes++;
+        });
+
+        // Convertir a array y ordenar
+        const listaAgrupada = Object.values(agrupado).sort((a, b) => b.pendientes - a.pendientes);
+
+        renderizarTabla(listaAgrupada);
+        renderizarGrafico(listaAgrupada);
+
+      } catch (error) {
+        console.error("Error de red:", error);
+        document.getElementById('tabla-cuerpo').innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center text-red-500">Error conectando con el servidor.</td></tr>';
+      }
+    }
+
+    // ==========================================
+    // RENDERIZADO VISUAL
+    // ==========================================
+    function renderizarTabla(lista) {
+      const tbody = document.getElementById('tabla-cuerpo');
+      tbody.innerHTML = '';
+
+      if(lista.length === 0) {
+         tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center">No hay datos todavía.</td></tr>';
+         return;
+      }
+
+      lista.forEach(item => {
+        const row = `
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium text-gray-800">${item.titulo}</td>
+            <td class="px-4 py-3 text-gray-500">${item.variant_id}</td>
+            <td class="px-4 py-3 text-center">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                ${item.pendientes}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-center text-gray-500">${item.enviados}</td>
+          </tr>
+        `;
+        tbody.innerHTML += row;
+      });
+    }
+
+    function renderizarGrafico(lista) {
+      const top5 = lista.slice(0, 5);
+      const labels = top5.map(item => item.titulo.substring(0, 15) + '...');
+      const datosPendientes = top5.map(item => item.pendientes);
+
+      const ctx = document.getElementById('myChart').getContext('2d');
+      
+      if(myChart) myChart.destroy();
+
+      myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Clientes esperando',
+            data: datosPendientes,
+            backgroundColor: 'rgba(59, 130, 246, 0.8)',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
+
+    cargarDatos();
+    </script>
+</body>
+</html>
