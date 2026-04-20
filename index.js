@@ -18,6 +18,7 @@ const app = express();
 // pero para nuestra API necesitamos JSON. Lo manejaremos más abajo.
 app.use(cors());
 app.use(cookieParser());
+app.set('trust proxy', 1);
 app.use(session({
   secret: process.env.SHOPIFY_API_SECRET || 'super-secreto-temporal',
   resave: false,
