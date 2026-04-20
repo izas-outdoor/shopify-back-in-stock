@@ -2,81 +2,133 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Izas Outdoor - Back in Stock Analytics</title>
+    <title>Izas Outdoor - Inteligencia de Stock</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
     <script src="https://unpkg.com/@shopify/app-bridge-utils@3"></script>
+
     <script>
-        // Leemos el parámetro 'host' de la URL (que Shopify nos envía automáticamente)
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'sans-serif'] }
+          }
+        }
+      }
+    </script>
+
+    <script>
         const urlParams = new URLSearchParams(window.location.search);
         const host = urlParams.get('host');
 
         if (host) {
             const app = window['app-bridge'].createApp({
-                // PON AQUÍ TU API KEY DE LA APP DE SHOPIFY
+                // ⚠️ PON AQUÍ TU API KEY DE LA APP DE SHOPIFY ⚠️
                 apiKey: 'ed82254e574f3711a131195ac05ac739',
                 host: host,
                 forceRedirect: true
             });
-            // Inicializamos el título de la página dentro del admin de Shopify
             const TitleBar = window['app-bridge'].actions.TitleBar;
-            const titleBarOptions = { title: 'Panel de Demanda de Stock' };
-            const myTitleBar = TitleBar.create(app, titleBarOptions);
-        } else {
-            console.error('No se encontró el parámetro host. ¿Estás dentro de Shopify?');
+            TitleBar.create(app, { title: 'Inteligencia de Stock' });
         }
     </script>
+
+    <style>
+        /* Detalles finos de UI */
+        .glass-card {
+            background: #ffffff;
+            border: 1px solid #e4e4e7;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border-radius: 12px;
+        }
+        .table-row-hover:hover { background-color: #f4f4f5; transition: background-color 0.2s ease; }
+    </style>
 </head>
-<body class="bg-gray-50 p-8">
-    <div class="max-w-7xl mx-auto">
-        <h1 class="text-3xl font-bold text-gray-800 mb-8">📦 Panel de Demanda de Stock</h1>
 
+<body class="bg-[#f4f4f5] text-zinc-800 font-sans min-h-screen">
+
+    <header class="bg-zinc-900 px-8 py-5 flex items-center justify-between shadow-md">
+        <div class="flex items-center gap-4">
+            <img src="https://izas-outdoor.com/cdn/shop/files/Logo_Izas_Blanco.png" alt="Izas Logo" class="h-8 object-contain">
+            <div class="h-6 w-px bg-zinc-700"></div>
+            <span class="text-zinc-100 font-semibold tracking-wide text-sm uppercase">Stock Intelligence</span>
+        </div>
+        <div class="text-zinc-400 text-sm">
+            Actualizado en tiempo real <span class="relative inline-flex h-3 w-3 ml-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-8">
+        
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-                <h3 class="text-gray-500 text-sm font-semibold uppercase">Total Solicitudes</h3>
-                <p id="kpi-total" class="text-3xl font-bold text-gray-800 mt-2">Cargando...</p>
+            <div class="glass-card p-6 border-t-4 border-t-zinc-900 relative overflow-hidden">
+                <h3 class="text-zinc-500 text-xs font-bold uppercase tracking-wider">Demanda Histórica</h3>
+                <p id="kpi-total" class="text-4xl font-black text-zinc-900 mt-2">--</p>
+                <div class="absolute -bottom-4 -right-4 opacity-5 text-8xl font-black">Σ</div>
             </div>
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500">
-                <h3 class="text-gray-500 text-sm font-semibold uppercase">Esperando Stock</h3>
-                <p id="kpi-pendientes" class="text-3xl font-bold text-yellow-600 mt-2">Cargando...</p>
+            
+            <div class="glass-card p-6 border-t-4 border-t-red-500 relative overflow-hidden">
+                <h3 class="text-zinc-500 text-xs font-bold uppercase tracking-wider">Ventas Potenciales (En Espera)</h3>
+                <p id="kpi-pendientes" class="text-4xl font-black text-red-600 mt-2">--</p>
+                <div class="absolute -bottom-4 -right-4 opacity-5 text-8xl font-black">⌛</div>
             </div>
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-                <h3 class="text-gray-500 text-sm font-semibold uppercase">Ya Avisados</h3>
-                <p id="kpi-enviados" class="text-3xl font-bold text-green-600 mt-2">Cargando...</p>
+
+            <div class="glass-card p-6 border-t-4 border-t-emerald-500 relative overflow-hidden">
+                <h3 class="text-zinc-500 text-xs font-bold uppercase tracking-wider">Avisos Enviados (Recuperados)</h3>
+                <p id="kpi-enviados" class="text-4xl font-black text-emerald-600 mt-2">--</p>
+                <div class="absolute -bottom-4 -right-4 opacity-5 text-8xl font-black">✓</div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="bg-white rounded-lg shadow p-6 lg:col-span-1">
-                <h2 class="text-xl font-bold text-gray-800 mb-4">Top 5 Más Demandados</h2>
-                <canvas id="myChart"></canvas>
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            
+            <div class="glass-card p-6 xl:col-span-1 flex flex-col">
+                <h2 class="text-lg font-bold text-zinc-900 mb-6 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    Top 5 Más Buscados
+                </h2>
+                <div class="flex-grow flex items-center justify-center">
+                    <canvas id="myChart" class="w-full"></canvas>
+                </div>
             </div>
-            <div class="bg-white rounded-lg shadow p-6 lg:col-span-2 overflow-x-auto">
-                <h2 class="text-xl font-bold text-gray-800 mb-4">Detalle por Variante</h2>
-                <table class="min-w-full text-left text-sm">
-                    <thead class="bg-gray-100 text-gray-600">
-                        <tr>
-                            <th class="px-4 py-3 rounded-tl-lg">Producto</th>
-                            <th class="px-4 py-3">ID Variante</th>
-                            <th class="px-4 py-3 text-center">Gente Esperando</th>
-                            <th class="px-4 py-3 text-center rounded-tr-lg">Ya Avisados</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-cuerpo" class="divide-y divide-gray-100">
-                        <tr><td colspan="4" class="px-4 py-4 text-center">Conectando con el servidor...</td></tr>
-                    </tbody>
-                </table>
+
+            <div class="glass-card xl:col-span-2 overflow-hidden flex flex-col">
+                <div class="p-6 border-b border-zinc-200 bg-white">
+                    <h2 class="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                        Radar de Reposición (Por Variante)
+                    </h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm whitespace-nowrap">
+                        <thead class="bg-zinc-50 text-zinc-500 font-semibold text-xs uppercase tracking-wider">
+                            <tr>
+                                <th class="px-6 py-4">Producto</th>
+                                <th class="px-6 py-4">ID Variante</th>
+                                <th class="px-6 py-4 text-center">Gente Esperando</th>
+                                <th class="px-6 py-4 text-center">Notificados</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-cuerpo" class="divide-y divide-zinc-200 bg-white">
+                            <tr><td colspan="4" class="px-6 py-8 text-center text-zinc-400">Conectando con la base de datos segura...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+
         </div>
-    </div>
+    </main>
 
     <script>
     let myChart = null;
 
     // ==========================================
-    // LÓGICA DE EXTRACCIÓN (Ahora habla con tu propio servidor)
+    // LÓGICA DE EXTRACCIÓN 
     // ==========================================
     async function cargarDatos() {
       try {
@@ -84,11 +136,10 @@
         const data = await respuesta.json();
 
         if (data.error) {
-          alert('Error cargando datos: ' + data.error);
+          console.error('Error cargando datos:', data.error);
           return;
         }
 
-        // KPIs
         const total = data.length;
         const pendientes = data.filter(r => !r.notified).length;
         const enviados = data.filter(r => r.notified).length;
@@ -97,13 +148,12 @@
         document.getElementById('kpi-pendientes').innerText = pendientes;
         document.getElementById('kpi-enviados').innerText = enviados;
 
-        // Agrupar datos por variante
         const agrupado = {};
         data.forEach(req => {
           const key = req.variant_id;
           if (!agrupado[key]) {
             agrupado[key] = {
-              titulo: req.product_title || 'Producto sin nombre',
+              titulo: req.product_title || 'Producto desconocido',
               variant_id: req.variant_id,
               pendientes: 0,
               enviados: 0
@@ -113,7 +163,6 @@
           else agrupado[key].pendientes++;
         });
 
-        // Convertir a array y ordenar
         const listaAgrupada = Object.values(agrupado).sort((a, b) => b.pendientes - a.pendientes);
 
         renderizarTabla(listaAgrupada);
@@ -121,7 +170,7 @@
 
       } catch (error) {
         console.error("Error de red:", error);
-        document.getElementById('tabla-cuerpo').innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center text-red-500">Error conectando con el servidor.</td></tr>';
+        document.getElementById('tabla-cuerpo').innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-red-500">Error de conexión con el servidor interno.</td></tr>';
       }
     }
 
@@ -133,21 +182,26 @@
       tbody.innerHTML = '';
 
       if(lista.length === 0) {
-         tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center">No hay datos todavía.</td></tr>';
+         tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-zinc-500">No hay solicitudes de stock pendientes.</td></tr>';
          return;
       }
 
       lista.forEach(item => {
+        // Estilo dinámico para el badge: Rojo si hay muchos, gris si hay pocos
+        const badgeColor = item.pendientes > 0 
+            ? 'bg-red-50 text-red-700 border border-red-200' 
+            : 'bg-zinc-100 text-zinc-600 border border-zinc-200';
+
         const row = `
-          <tr class="hover:bg-gray-50">
-            <td class="px-4 py-3 font-medium text-gray-800">${item.titulo}</td>
-            <td class="px-4 py-3 text-gray-500">${item.variant_id}</td>
-            <td class="px-4 py-3 text-center">
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+          <tr class="table-row-hover">
+            <td class="px-6 py-4 font-semibold text-zinc-900">${item.titulo}</td>
+            <td class="px-6 py-4 text-zinc-500 font-mono text-xs">${item.variant_id}</td>
+            <td class="px-6 py-4 text-center">
+              <span class="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold ${badgeColor}">
                 ${item.pendientes}
               </span>
             </td>
-            <td class="px-4 py-3 text-center text-gray-500">${item.enviados}</td>
+            <td class="px-6 py-4 text-center text-zinc-400 font-medium">${item.enviados}</td>
           </tr>
         `;
         tbody.innerHTML += row;
@@ -156,11 +210,10 @@
 
     function renderizarGrafico(lista) {
       const top5 = lista.slice(0, 5);
-      const labels = top5.map(item => item.titulo.substring(0, 15) + '...');
+      const labels = top5.map(item => item.titulo.substring(0, 18) + (item.titulo.length > 18 ? '...' : ''));
       const datosPendientes = top5.map(item => item.pendientes);
 
       const ctx = document.getElementById('myChart').getContext('2d');
-      
       if(myChart) myChart.destroy();
 
       myChart = new Chart(ctx, {
@@ -168,21 +221,46 @@
         data: {
           labels: labels,
           datasets: [{
-            label: 'Clientes esperando',
+            label: 'Avisos Pendientes',
             data: datosPendientes,
-            backgroundColor: 'rgba(59, 130, 246, 0.8)',
-            borderRadius: 4
+            backgroundColor: '#18181b', /* zinc-900 */
+            hoverBackgroundColor: '#3f3f46', /* zinc-700 */
+            borderRadius: 6,
+            borderSkipped: false,
+            barThickness: 32
           }]
         },
         options: {
           responsive: true,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+          maintainAspectRatio: false,
+          plugins: { 
+              legend: { display: false },
+              tooltip: {
+                  backgroundColor: '#18181b',
+                  padding: 12,
+                  titleFont: { family: 'Inter', size: 14 },
+                  bodyFont: { family: 'Inter', size: 13 },
+                  cornerRadius: 8
+              }
+          },
+          scales: { 
+              y: { 
+                  beginAtZero: true, 
+                  ticks: { stepSize: 1, color: '#a1a1aa' },
+                  grid: { color: '#f4f4f5', drawBorder: false }
+              },
+              x: {
+                  ticks: { color: '#71717a', font: { family: 'Inter', size: 11 } },
+                  grid: { display: false }
+              }
+          }
         }
       });
     }
 
+    // Intervalo para recargar datos cada minuto automáticamente (efecto "En vivo")
     cargarDatos();
+    setInterval(cargarDatos, 60000); 
     </script>
 </body>
 </html>
