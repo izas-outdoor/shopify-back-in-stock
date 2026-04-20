@@ -41,15 +41,25 @@ const shopify = shopifyApi({
   isEmbeddedApp: true,
 });
 
-// Ruta de inicio: Shopify te envía aquí cuando abres la app
-app.get('/shopify', async (req, res) => {
+// Ruta principal: Shopify entra por aquí cada vez que abres la app
+app.get('/shopify', (req, res) => {
   const shop = req.query.shop;
+  const host = req.query.host;
 
-  if (!shop) {
-    return res.status(400).send('Falta el parámetro shop. ¿Estás entrando desde el admin de Shopify?');
+  if (!shop || !host) {
+    return res.status(400).send('Falta el parámetro shop o host.');
   }
 
-  // 1. Iniciamos el baile de OAuth
+  // Como la app ya está instalada, pasamos de largo el OAuth
+  // y redirigimos directamente a nuestra interfaz gráfica
+  res.redirect(`/?shop=${shop}&host=${host}`);
+});
+
+// Ruta de instalación de emergencia (solo por si algún día necesitas reinstalarla)
+app.get('/install', async (req, res) => {
+  const shop = req.query.shop;
+  if (!shop) return res.status(400).send('Falta el parámetro shop.');
+  
   await shopify.auth.begin({
     shop: shop,
     callbackPath: '/auth/callback',
