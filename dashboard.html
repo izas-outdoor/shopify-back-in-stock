@@ -29,7 +29,7 @@
         if (host) {
             const app = window['app-bridge'].createApp({
                 // ⚠️ PON AQUÍ TU API KEY DE LA APP DE SHOPIFY ⚠️
-                apiKey: 'ed82254e574f3711a131195ac05ac739',
+                apiKey: 'ed82254e574f3711a131195ac05ac739', 
                 host: host,
                 forceRedirect: true
             });
@@ -98,12 +98,22 @@
             </div>
 
             <div class="glass-card xl:col-span-2 overflow-hidden flex flex-col">
-                <div class="p-6 border-b border-zinc-200 bg-white">
+                <div class="p-6 border-b border-zinc-200 bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h2 class="text-lg font-bold text-zinc-900 flex items-center gap-2">
                         <svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
-                        Radar de Reposición (Por Variante)
+                        Radar de Reposición
                     </h2>
+                    
+                    <div class="relative w-full sm:w-72">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input type="text" id="buscador" oninput="filtrarTabla()" class="block w-full pl-10 pr-3 py-2 border border-zinc-200 rounded-lg leading-5 bg-zinc-50 placeholder-zinc-400 focus:outline-none focus:bg-white focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 sm:text-sm transition-colors" placeholder="Buscar producto o ID...">
+                    </div>
                 </div>
+
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-left text-sm whitespace-nowrap">
                         <thead class="bg-zinc-50 text-zinc-500 font-semibold text-xs uppercase tracking-wider">
@@ -125,6 +135,7 @@
 
     <script>
     let myChart = null;
+    let datosGlobales = []; // NUEVO: Variable para almacenar todos los datos y poder filtrarlos
 
     // ==========================================
     // LÓGICA DE EXTRACCIÓN 
@@ -154,7 +165,7 @@
             agrupado[key] = {
               titulo: req.product_title || 'Producto desconocido',
               variant_id: req.variant_id,
-              image_url: req.image_url, // <--- ¡ESTA ES LA LÍNEA QUE FALTA EN TU CÓDIGO!
+              image_url: req.image_url, 
               pendientes: 0,
               enviados: 0
             };
@@ -165,13 +176,31 @@
 
         const listaAgrupada = Object.values(agrupado).sort((a, b) => b.pendientes - a.pendientes);
 
-        renderizarTabla(listaAgrupada);
+        // Guardamos los datos globalmente y llamamos al filtro en lugar de renderizar directamente
+        datosGlobales = listaAgrupada;
+        filtrarTabla();
+        
+        // El gráfico siempre muestra el top 5 general, por lo que no lo filtramos
         renderizarGrafico(listaAgrupada);
 
       } catch (error) {
         console.error("Error de red:", error);
         document.getElementById('tabla-cuerpo').innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-red-500">Error de conexión con el servidor interno.</td></tr>';
       }
+    }
+
+    // ==========================================
+    // NUEVO: LÓGICA DEL BUSCADOR
+    // ==========================================
+    function filtrarTabla() {
+      const textoBusqueda = document.getElementById('buscador').value.toLowerCase();
+      
+      const datosFiltrados = datosGlobales.filter(item => {
+        return item.titulo.toLowerCase().includes(textoBusqueda) || 
+               item.variant_id.toString().includes(textoBusqueda);
+      });
+
+      renderizarTabla(datosFiltrados);
     }
 
     // ==========================================
@@ -182,24 +211,24 @@
       tbody.innerHTML = '';
 
       if(lista.length === 0) {
-         tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-12 text-center">No hay peticiones registradas.</td></tr>';
+         tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-12 text-center text-zinc-500">No se encontraron productos.</td></tr>';
          return;
       }
 
-      const maxDemand = Math.max(...lista.map(i => i.pendientes));
+      // Usamos el máximo de datosGlobales para que las barras de porcentaje no se deformen al filtrar
+      const maxDemand = Math.max(...datosGlobales.map(i => i.pendientes), 1);
 
       lista.forEach(item => {
         const perc = maxDemand > 0 ? (item.pendientes / maxDemand) * 100 : 0;
         const color = perc > 70 ? 'bg-red-500' : 'bg-zinc-800';
         
-        // Iniciales por si no hay imagen
         const initials = item.titulo.substring(0,2).toUpperCase();
         const imgContent = item.image_url 
             ? `<img src="${item.image_url}" class="h-full w-full object-cover">`
             : `<span class="text-[10px] font-bold text-zinc-400">${initials}</span>`;
 
         tbody.innerHTML += `
-          <tr class="table-row-hover">
+          <tr class="table-row-hover border-b border-zinc-100 last:border-0">
             <td class="px-6 py-4">
               <div class="flex items-center gap-3">
                 <div class="h-10 w-10 rounded border border-zinc-200 bg-zinc-50 flex-shrink-0 flex items-center justify-center overflow-hidden">
@@ -207,20 +236,24 @@
                 </div>
                 <div>
                   <div class="font-bold text-zinc-900">${item.titulo}</div>
-                  <div class="text-[10px] font-mono text-zinc-400 uppercase">ID: ${item.variant_id}</div>
+                  <div class="text-[10px] font-mono text-zinc-400 uppercase flex items-center gap-1 mt-0.5">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    ID: ${item.variant_id}
+                  </div>
                 </div>
               </div>
             </td>
             <td class="px-6 py-4 w-64">
               <div class="flex items-center gap-3">
-                <div class="flex-grow bg-zinc-100 h-1.5 rounded-full overflow-hidden">
-                  <div class="${color} h-full transition-all duration-1000" style="width: ${perc}%"></div>
+                <div class="flex-grow bg-zinc-100 h-2 rounded-full overflow-hidden shadow-inner">
+                  <div class="${color} h-full transition-all duration-1000 ease-out" style="width: ${perc}%"></div>
                 </div>
-                <span class="text-xs font-black text-zinc-900">${item.pendientes}</span>
+                <span class="text-xs font-black text-zinc-900 w-6 text-right">${item.pendientes}</span>
               </div>
             </td>
             <td class="px-6 py-4 text-center">
-              <span class="px-2 py-1 rounded bg-zinc-100 text-[10px] font-bold text-zinc-500 uppercase">
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-zinc-100 text-[10px] font-bold text-zinc-500 uppercase">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                 ${item.enviados} Enviados
               </span>
             </td>
@@ -279,7 +312,7 @@
       });
     }
 
-    // Intervalo para recargar datos cada minuto automáticamente (efecto "En vivo")
+    // Intervalo para recargar datos cada minuto
     cargarDatos();
     setInterval(cargarDatos, 60000); 
     </script>
