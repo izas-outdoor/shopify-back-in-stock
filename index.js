@@ -114,15 +114,17 @@ app.use((req, res, next) => {
 
 // Suscripción desde la tienda
 app.post('/subscribe', async (req, res) => {
-  const { email, variant_id, product_title } = req.body;
+  // 1. Añadimos image_url a los datos que recibimos
+  const { email, variant_id, product_title, image_url } = req.body;
 
   if (!email || !variant_id) {
     return res.status(400).json({ error: 'Faltan datos requeridos' });
   }
 
+  // 2. Le decimos a Supabase que inserte también la image_url
   const { error } = await supabase
     .from('back_in_stock_requests')
-    .insert([{ email, variant_id, product_title }]);
+    .insert([{ email, variant_id, product_title, image_url }]);
 
   if (error) {
     console.error('Error al guardar:', error);
