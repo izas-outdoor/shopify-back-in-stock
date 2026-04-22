@@ -157,6 +157,21 @@
             </div>
 
         </div>
+        <div id="modal-correos" class="fixed inset-0 bg-zinc-900/40 z-[100] hidden flex items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="glass-card w-full max-w-md p-6 max-h-[80vh] flex flex-col m-4 shadow-2xl">
+            <div class="flex justify-between items-start mb-6 border-b border-zinc-100 pb-4">
+                <div>
+                    <h3 class="font-black text-zinc-900 uppercase tracking-wider text-sm">Lista de Espera</h3>
+                    <p id="modal-titulo" class="text-xs text-zinc-500 mt-1">Producto</p>
+                </div>
+                <button onclick="cerrarModal()" class="text-zinc-400 hover:text-zinc-900 transition-colors bg-zinc-100 hover:bg-zinc-200 rounded-full p-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="modal-lista" class="overflow-y-auto flex-grow space-y-2 text-sm text-zinc-700 font-mono pr-2">
+                </div>
+        </div>
+    </div>
     </main>
 
     <script>
@@ -191,14 +206,19 @@
             agrupado[key] = {
               titulo: req.product_title || 'Producto desconocido',
               variant_id: req.variant_id,
-              variant_title: req.variant_title || 'Talla/Color no registrado',
+              variant_title: req.variant_title || 'Talla/Color no registrado', 
               image_url: req.image_url, 
               pendientes: 0,
-              enviados: 0
+              enviados: 0,
+              emails_esperando: [] // <--- NUEVO: Creamos la "caja" para los correos
             };
           }
-          if (req.notified) agrupado[key].enviados++;
-          else agrupado[key].pendientes++;
+          if (req.notified) {
+              agrupado[key].enviados++;
+          } else {
+              agrupado[key].pendientes++;
+              if(req.email) agrupado[key].emails_esperando.push(req.email); // <--- NUEVO: Guardamos el email
+          }
         });
 
         const listaAgrupada = Object.values(agrupado).sort((a, b) => b.pendientes - a.pendientes);
@@ -288,12 +308,40 @@
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                 ${item.enviados} Enviados
               </span>
+              ${item.pendientes > 0 ? `
+              <button onclick="abrirModalCorreos('${item.variant_id}')" class="block mx-auto mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-800 underline uppercase tracking-widest transition-colors">
+                  Ver ${item.pendientes} emails
+              </button>` : ''}
             </td>
           </tr>
         `;
       });
     }
 
+    // ==========================================
+    // NUEVO: INTERACCIÓN DEL MODAL DE CORREOS
+    // ==========================================
+    function abrirModalCorreos(variant_id) {
+        // Buscamos el producto en nuestros datos guardados
+        const producto = datosGlobales.find(p => p.variant_id == variant_id);
+        if(!producto) return;
+
+        // Actualizamos el título
+        document.getElementById('modal-titulo').innerText = `${producto.titulo} (${producto.variant_title})`;
+
+        // Creamos la lista visual
+        const listaHTML = producto.emails_esperando.length > 0 
+            ? producto.emails_esperando.map(email => `<div class="bg-zinc-50 p-2.5 rounded-lg border border-zinc-200 flex items-center gap-2"><svg class="w-3 h-3 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>${email}</div>`).join('')
+            : '<p class="text-center text-zinc-400 italic py-4">No hay clientes esperando actualmente.</p>';
+        
+        document.getElementById('modal-lista').innerHTML = listaHTML;
+        document.getElementById('modal-correos').classList.remove('hidden');
+    }
+
+    function cerrarModal() {
+        document.getElementById('modal-correos').classList.add('hidden');
+    }
+        
     // ==========================================
     // NUEVO: ANÁLISIS DE CORREOS Y MARKETING
     // ==========================================
