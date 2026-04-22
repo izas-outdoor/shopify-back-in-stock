@@ -52,14 +52,20 @@
 
 <body class="bg-[#f4f4f5] text-zinc-800 font-sans min-h-screen">
 
-    <header class="bg-zinc-900 px-8 py-5 flex items-center justify-between shadow-md">
-        <div class="flex items-center gap-4">
-            <img src="https://cdn.shopify.com/s/files/1/0834/1579/3985/files/logo-izas-blanco.svg?v=1699971182" alt="Izas Logo" class="h-8 object-contain">
-            <div class="h-6 w-px bg-zinc-700"></div>
-            <span class="text-zinc-100 font-semibold tracking-wide text-sm uppercase">Me AvIzas?</span>
+    <header class="bg-zinc-900 px-4 py-4 sm:px-8 sm:py-5 flex items-center justify-between shadow-md sticky top-0 z-50">
+        <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+            <img src="https://cdn.shopify.com/s/files/1/0834/1579/3985/files/logo-izas-blanco.svg?v=1699971182" alt="Izas Logo" class="h-6 sm:h-8 object-contain flex-shrink-0">
+            <div class="h-5 sm:h-6 w-px bg-zinc-700 flex-shrink-0"></div>
+            <span class="text-zinc-100 font-bold tracking-tighter text-xs sm:text-sm uppercase truncate">Me AvIZAS?</span>
         </div>
-        <div class="text-zinc-400 text-sm">
-            Actualizado en tiempo real <span class="relative inline-flex h-3 w-3 ml-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span>
+        
+        <div class="flex items-center gap-2 text-zinc-400 text-[10px] sm:text-xs font-medium flex-shrink-0 ml-2">
+            <span class="hidden sm:inline">Actualizado en tiempo real</span>
+            <span class="sm:hidden">En vivo</span>
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
         </div>
     </header>
 
