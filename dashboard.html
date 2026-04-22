@@ -132,6 +132,31 @@
             </div>
 
         </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+            
+            <div class="glass-card p-6 flex flex-col">
+                <h2 class="text-sm font-black text-zinc-900 uppercase tracking-wider italic mb-1 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path></svg>
+                    Radiografía de Audiencia
+                </h2>
+                <p class="text-[10px] text-zinc-400 font-medium mb-6">Proveedores de correo más usados por tus clientes.</p>
+                <div id="dominios-container" class="flex-grow space-y-4">
+                    <p class="text-xs text-zinc-400 text-center mt-4">Analizando correos...</p>
+                </div>
+            </div>
+
+            <div class="glass-card p-6 flex flex-col">
+                <h2 class="text-sm font-black text-zinc-900 uppercase tracking-wider italic mb-1 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76"></path></svg>
+                    Eficiencia del Sistema
+                </h2>
+                <p class="text-[10px] text-zinc-400 font-medium mb-4">Tasa de correos enviados vs. en espera.</p>
+                <div class="flex-grow relative min-h-[200px]">
+                    <canvas id="emailChart"></canvas>
+                </div>
+            </div>
+
+        </div>
     </main>
 
     <script>
@@ -189,6 +214,8 @@
         console.error("Error de red:", error);
         document.getElementById('tabla-cuerpo').innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-red-500">Error de conexión con el servidor interno.</td></tr>';
       }
+        // LLAMADA A LA NUEVA FUNCIÓN DE CORREOS
+        analizarCorreos(data);
     }
 
     // ==========================================
@@ -269,6 +296,94 @@
       });
     }
 
+    // ==========================================
+    // NUEVO: ANÁLISIS DE CORREOS Y MARKETING
+    // ==========================================
+    let emailChartInstance = null;
+
+    function analizarCorreos(datos) {
+        if(datos.length === 0) return;
+
+        // 1. ANÁLISIS DE DOMINIOS
+        const dominios = {};
+        datos.forEach(req => {
+            if(req.email) {
+                // Separamos el correo por la "@" y cogemos la segunda parte
+                const partes = req.email.split('@');
+                if(partes.length === 2) {
+                    const dominio = partes[1].toLowerCase();
+                    dominios[dominio] = (dominios[dominio] || 0) + 1;
+                }
+            }
+        });
+
+        // Convertimos el objeto a array, ordenamos y cogemos los 4 primeros
+        const topDominios = Object.entries(dominios)
+            .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+            .sort((a, b) => b.cantidad - a.cantidad)
+            .slice(0, 4);
+
+        const container = document.getElementById('dominios-container');
+        container.innerHTML = '';
+        const totalCorreos = datos.length;
+
+        topDominios.forEach((d, index) => {
+            const porcentaje = ((d.cantidad / totalCorreos) * 100).toFixed(1);
+            // Colores distintos para los primeros
+            const bgBarra = index === 0 ? 'bg-zinc-900' : (index === 1 ? 'bg-zinc-600' : 'bg-zinc-400');
+            
+            container.innerHTML += `
+                <div>
+                    <div class="flex items-center justify-between text-xs mb-1">
+                        <span class="font-bold text-zinc-700">@${d.nombre}</span>
+                        <span class="text-zinc-500 font-mono">${d.cantidad} leads <span class="text-[10px]">(${porcentaje}%)</span></span>
+                    </div>
+                    <div class="w-full bg-zinc-100 h-1.5 rounded-full overflow-hidden shadow-inner">
+                        <div class="${bgBarra} h-full transition-all duration-1000" style="width: ${porcentaje}%"></div>
+                    </div>
+                </div>
+            `;
+        });
+
+        // 2. GRÁFICO DE EMBUDO (DOUGHNUT)
+        const notificados = datos.filter(r => r.notified).length;
+        const pendientes = totalCorreos - notificados;
+
+        const ctx = document.getElementById('emailChart').getContext('2d');
+        if(emailChartInstance) emailChartInstance.destroy();
+
+        emailChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Correos en Espera', 'Alertas Enviadas'],
+                datasets: [{
+                    data: [pendientes, notificados],
+                    backgroundColor: ['#ef4444', '#10b981'], // Rojo Tailwind y Verde Tailwind
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%', // Hace el donut más fino y elegante
+                plugins: {
+                    legend: { 
+                        position: 'bottom', 
+                        labels: { font: { family: 'Inter', size: 11 }, usePointStyle: true, padding: 20 } 
+                    },
+                    tooltip: {
+                        backgroundColor: '#18181b',
+                        padding: 12,
+                        titleFont: { family: 'Inter', size: 13 },
+                        bodyFont: { family: 'Inter', size: 12 },
+                        cornerRadius: 8
+                    }
+                }
+            }
+        });
+    }
+        
     function renderizarGrafico(lista) {
       const top5 = lista.slice(0, 5);
       const labels = top5.map(item => item.titulo.substring(0, 18) + (item.titulo.length > 18 ? '...' : ''));
