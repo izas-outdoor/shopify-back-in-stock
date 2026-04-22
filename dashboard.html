@@ -191,7 +191,7 @@
             agrupado[key] = {
               titulo: req.product_title || 'Producto desconocido',
               variant_id: req.variant_id,
-              variant_title: req.variant_title || 'Talla/Color no registrado', // <--- AÑADE ESTA LÍNEA
+              variant_title: req.variant_title || 'Talla/Color no registrado',
               image_url: req.image_url, 
               pendientes: 0,
               enviados: 0
@@ -203,19 +203,17 @@
 
         const listaAgrupada = Object.values(agrupado).sort((a, b) => b.pendientes - a.pendientes);
 
-        // Guardamos los datos globalmente y llamamos al filtro en lugar de renderizar directamente
         datosGlobales = listaAgrupada;
         filtrarTabla();
-        
-        // El gráfico siempre muestra el top 5 general, por lo que no lo filtramos
         renderizarGrafico(listaAgrupada);
+
+        // 👇 ¡AQUÍ ESTÁ EL CAMBIO! La metemos dentro del "try"
+        analizarCorreos(data);
 
       } catch (error) {
         console.error("Error de red:", error);
         document.getElementById('tabla-cuerpo').innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-red-500">Error de conexión con el servidor interno.</td></tr>';
       }
-        // LLAMADA A LA NUEVA FUNCIÓN DE CORREOS
-        analizarCorreos(data);
     }
 
     // ==========================================
