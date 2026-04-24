@@ -98,8 +98,8 @@
                     <svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                     Top 5 Más Buscados
                 </h2>
-                <div class="flex-grow flex items-center justify-center">
-                    <canvas id="myChart" class="w-full"></canvas>
+                <div class="relative w-full h-[350px]">
+                    <canvas id="myChart"></canvas>
                 </div>
             </div>
 
@@ -430,9 +430,13 @@
         });
     }
         
+// ==========================================
+    // RENDERIZADO DEL GRÁFICO (VERSIÓN HORIZONTAL)
+    // ==========================================
     function renderizarGrafico(lista) {
       const top5 = lista.slice(0, 5);
-      const labels = top5.map(item => item.titulo.substring(0, 18) + (item.titulo.length > 18 ? '...' : ''));
+      // Cortamos el texto a 22 caracteres para que quepa bien a la izquierda
+      const labels = top5.map(item => item.titulo.substring(0, 22) + (item.titulo.length > 22 ? '...' : ''));
       const datosPendientes = top5.map(item => item.pendientes);
 
       const ctx = document.getElementById('myChart').getContext('2d');
@@ -447,12 +451,12 @@
             data: datosPendientes,
             backgroundColor: '#18181b', /* zinc-900 */
             hoverBackgroundColor: '#3f3f46', /* zinc-700 */
-            borderRadius: 6,
-            borderSkipped: false,
-            barThickness: 32
+            borderRadius: 4,
+            barThickness: 24 /* Hace las barras finas y elegantes */
           }]
         },
         options: {
+          indexAxis: 'y', /* <--- LA MAGIA: Lo hace horizontal */
           responsive: true,
           maintainAspectRatio: false,
           plugins: { 
@@ -466,13 +470,13 @@
               }
           },
           scales: { 
-              y: { 
+              x: { 
                   beginAtZero: true, 
                   ticks: { stepSize: 1, color: '#a1a1aa' },
                   grid: { color: '#f4f4f5', drawBorder: false }
               },
-              x: {
-                  ticks: { color: '#71717a', font: { family: 'Inter', size: 11 } },
+              y: {
+                  ticks: { color: '#3f3f46', font: { family: 'Inter', size: 11, weight: '600' } },
                   grid: { display: false }
               }
           }
