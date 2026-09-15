@@ -124,6 +124,8 @@
                     </tbody>
                 </table>
             </div>
+
+            <div id="paginacion-container" class="px-6 py-4 border-t border-zinc-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500"></div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -169,6 +171,9 @@
 
     <script>
     let datosGlobales = [];
+    let listaFiltradaActual = [];
+    let paginaActual = 1;
+    const ITEMS_POR_PAGINA = 10;
     let emailChartInstance = null;
 
     async function cargarDatos() {
@@ -214,7 +219,7 @@
         const listaAgrupada = Object.values(agrupado).sort((a, b) => b.pendientes - a.pendientes);
 
         datosGlobales = listaAgrupada;
-        filtrarTabla();
+        filtrarTabla(false); // false: no reiniciar la página en cada auto-refresco
         analizarCorreos(data);
 
       } catch (error) {
@@ -223,13 +228,24 @@
       }
     }
 
-    function filtrarTabla() {
+    function filtrarTabla(reiniciarPagina = true) {
       const textoBusqueda = document.getElementById('buscador').value.toLowerCase();
-      const datosFiltrados = datosGlobales.filter(item => {
-        return item.titulo.toLowerCase().includes(textoBusqueda) || 
+      listaFiltradaActual = datosGlobales.filter(item => {
+        return item.titulo.toLowerCase().includes(textoBusqueda) ||
                item.variant_id.toString().includes(textoBusqueda);
       });
-      renderizarTabla(datosFiltrados);
+      if (reiniciarPagina) paginaActual = 1;
+      renderizarTabla(listaFiltradaActual);
+    }
+
+    function cambiarPagina(delta) {
+      paginaActual += delta;
+      renderizarTabla(listaFiltradaActual);
+    }
+
+    function irAPagina(numeroPagina) {
+      paginaActual = numeroPagina;
+      renderizarTabla(listaFiltradaActual);
     }
 
     function renderizarTabla(lista) {
@@ -238,12 +254,20 @@
 
       if(lista.length === 0) {
          tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-12 text-center text-zinc-500">No se encontraron productos.</td></tr>';
+         renderizarPaginacion(0);
          return;
       }
 
+      const totalPaginas = Math.max(1, Math.ceil(lista.length / ITEMS_POR_PAGINA));
+      if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+      if (paginaActual < 1) paginaActual = 1;
+
+      const inicio = (paginaActual - 1) * ITEMS_POR_PAGINA;
+      const itemsPagina = lista.slice(inicio, inicio + ITEMS_POR_PAGINA);
+
       const maxDemand = Math.max(...datosGlobales.map(i => i.pendientes), 1);
 
-      lista.forEach(item => {
+      itemsPagina.forEach(item => {
         const perc = maxDemand > 0 ? (item.pendientes / maxDemand) * 100 : 0;
         const color = perc > 70 ? 'bg-red-500' : 'bg-zinc-800';
         
@@ -294,6 +318,47 @@
           </tr>
         `;
       });
+
+      renderizarPaginacion(lista.length);
+    }
+
+    function renderizarPaginacion(totalItems) {
+      const container = document.getElementById('paginacion-container');
+
+      if (totalItems === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      const totalPaginas = Math.max(1, Math.ceil(totalItems / ITEMS_POR_PAGINA));
+      const inicio = (paginaActual - 1) * ITEMS_POR_PAGINA + 1;
+      const fin = Math.min(paginaActual * ITEMS_POR_PAGINA, totalItems);
+
+      let botonesPaginas = '';
+      for (let i = 1; i <= totalPaginas; i++) {
+        const esBorde = i === 1 || i === totalPaginas;
+        const esCercana = Math.abs(i - paginaActual) <= 1;
+
+        if (totalPaginas > 7 && !esBorde && !esCercana) {
+          if (i === 2 || i === totalPaginas - 1) {
+            botonesPaginas += `<span class="px-1 text-zinc-300 select-none">&hellip;</span>`;
+          }
+          continue;
+        }
+
+        botonesPaginas += `
+          <button onclick="irAPagina(${i})" class="min-w-[28px] h-7 px-1.5 rounded-md text-xs font-bold transition-colors ${i === paginaActual ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}">${i}</button>
+        `;
+      }
+
+      container.innerHTML = `
+        <span class="font-medium">Mostrando <strong class="text-zinc-700">${inicio}-${fin}</strong> de <strong class="text-zinc-700">${totalItems}</strong> productos</span>
+        <div class="flex items-center gap-1">
+          <button onclick="cambiarPagina(-1)" ${paginaActual === 1 ? 'disabled' : ''} class="h-7 px-2 rounded-md text-xs font-bold text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors">&lsaquo; Ant.</button>
+          ${botonesPaginas}
+          <button onclick="cambiarPagina(1)" ${paginaActual === totalPaginas ? 'disabled' : ''} class="h-7 px-2 rounded-md text-xs font-bold text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors">Sig. &rsaquo;</button>
+        </div>
+      `;
     }
 
     function analizarCorreos(datos) {
