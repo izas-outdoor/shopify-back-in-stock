@@ -25,16 +25,17 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const host = urlParams.get('host');
+        let appBridgeInstance = null;
 
         if (host) {
-            const app = window['app-bridge'].createApp({
+            appBridgeInstance = window['app-bridge'].createApp({
                 // ⚠️ PON AQUÍ TU API KEY DE LA APP DE SHOPIFY ⚠️
-                apiKey: 'ed82254e574f3711a131195ac05ac739', 
+                apiKey: 'ed82254e574f3711a131195ac05ac739',
                 host: host,
                 forceRedirect: true
             });
             const TitleBar = window['app-bridge'].actions.TitleBar;
-            TitleBar.create(app, { title: 'Me AvIzas?' });
+            TitleBar.create(appBridgeInstance, { title: 'Me AvIzas?' });
         }
     </script>
 
@@ -178,11 +179,19 @@
 
     async function cargarDatos() {
       try {
-        const respuesta = await fetch('/api/analytics');
+        // Dentro del admin de Shopify usamos authenticatedFetch de App Bridge
+        // para que cada petición lleve el token de sesión (JWT) y el backend
+        // pueda verificar que viene de un usuario autenticado del panel.
+        const fetchAutenticado = appBridgeInstance
+          ? window['app-bridge-utils'].authenticatedFetch(appBridgeInstance)
+          : fetch;
+
+        const respuesta = await fetchAutenticado('/api/analytics');
         const data = await respuesta.json();
 
         if (data.error) {
           console.error('Error cargando datos:', data.error);
+          document.getElementById('tabla-cuerpo').innerHTML = `<tr><td colspan="3" class="px-6 py-12 text-center text-red-500">${data.error}</td></tr>`;
           return;
         }
 
