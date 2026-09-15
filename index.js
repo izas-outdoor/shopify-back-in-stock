@@ -45,6 +45,14 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
 app.use(cors(allowedOrigins.length > 0 ? { origin: allowedOrigins } : undefined));
 app.use(cookieParser());
 app.set('trust proxy', 1);
+
+// Sin esta cabecera, cualquier sitio podría embeber el panel en un <iframe>
+// propio (clickjacking). La restringimos a los dominios desde los que
+// Shopify realmente lo embebe, que es justo como ya funciona hoy.
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', "frame-ancestors https://*.myshopify.com https://admin.shopify.com;");
+  next();
+});
 app.use(session({
   secret: process.env.SHOPIFY_API_SECRET,
   resave: false,
@@ -143,7 +151,8 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Suscripción desde la tienda
 app.post('/subscribe', async (req, res) => {
   // 1. Añadimos variant_title a los datos extraídos
-  const { email, variant_id, product_title, image_url, variant_title } = req.body;
+  const { variant_id, product_title, image_url, variant_title } = req.body;
+  const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : req.body.email;
 
   if (!email || !variant_id) {
     return res.status(400).json({ error: 'Faltan datos requeridos' });
@@ -151,6 +160,26 @@ app.post('/subscribe', async (req, res) => {
 
   if (!EMAIL_REGEX.test(email)) {
     return res.status(400).json({ error: 'El email no tiene un formato válido' });
+  }
+
+  // Evitamos altas duplicadas: si ese email ya está esperando esta misma
+  // variante, no creamos otra fila (y así tampoco se le enviará el aviso
+  // de reposición dos veces).
+  const { data: existente, error: checkError } = await supabase
+    .from('back_in_stock_requests')
+    .select('id')
+    .eq('email', email)
+    .eq('variant_id', variant_id)
+    .eq('notified', false)
+    .maybeSingle();
+
+  if (checkError) {
+    console.error('Error al comprobar duplicados:', checkError);
+    return res.status(500).json({ error: 'Error interno' });
+  }
+
+  if (existente) {
+    return res.status(200).json({ success: true, already_subscribed: true });
   }
 
   // 2. Lo incluimos en la inserción de Supabase
@@ -306,6 +335,12 @@ app.get('/api/analytics', verifyShopifySessionToken, async (req, res) => {
   
   // Devuelve los datos limpios al frontend
   res.json(data);
+});
+
+// Endpoint simple para que Render (u otro monitor externo) compruebe que el
+// servidor sigue vivo, sin tocar Supabase ni requerir autenticación.
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
 });
 
 // =====================================================================
