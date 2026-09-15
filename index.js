@@ -21,7 +21,7 @@ const REQUIRED_ENV_VARS = [
   'SHOPIFY_API_SECRET',
   'HOST',
   'SUPABASE_URL',
-  'SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
 ];
 const missingEnvVars = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
 if (missingEnvVars.length > 0) {
@@ -60,7 +60,12 @@ app.use(session({
   cookie: { secure: true, sameSite: 'none' } // Necesario para iframes
 }));
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+// Usamos la service_role key (secreta, nunca expuesta al navegador) en vez
+// de la anon key: es la que puede saltarse Row Level Security, que vamos a
+// activar en la tabla para que la anon key se quede sin ningún acceso.
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // =====================================================================
